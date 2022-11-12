@@ -32,6 +32,12 @@ public class Minimap : MonoBehaviour
         Session.OnPositionChanged += OnPositionChangedUpdateCoordinates;
     }
 
+    private void LateUpdate()
+    {
+        if(Session.CurrentSession == null) return;
+        UpdatePlayerArrow();
+    }
+
     private void OnDestroy()
     {
         Session.OnMapChanged -= OnMapChanged;
@@ -40,6 +46,7 @@ public class Minimap : MonoBehaviour
 
     async void Start() {
         Transform miniMapBase = transform.Find("Minimap");
+
         maskMiniMap = miniMapBase.Find("Mask").GetComponent<RectMask2D>();
         mapCoordinate = miniMapBase.Find("MapCoordinate").GetComponent<TextMeshProUGUI>();
         mapName = miniMapBase.Find("MapName").GetComponent<TextMeshProUGUI>();
@@ -55,9 +62,8 @@ public class Minimap : MonoBehaviour
         buttonPlus.onClick.RemoveAllListeners();
         buttonPlus.onClick.AddListener(OnClickButtonPlus);
 
-        
-
         PlayerIndicatorTexture = await Addressables.LoadAssetAsync<Texture2D>($"{DBManager.INTERFACE_PATH}map/map_arrow.png").Task;
+        playerArrow.texture = PlayerIndicatorTexture;
     }
 
     private void OnPositionChangedUpdateCoordinates(short xPos, short yPos)
@@ -91,6 +97,17 @@ public class Minimap : MonoBehaviour
     private void SetCoordinateMiniMap(short xPos, short yPos)
     {
         mapCoordinate.text = $"{xPos} {yPos}";
+    }
+
+    private void UpdatePlayerArrow()
+    {
+        // Getting the player avatar
+        Entity player = Session.CurrentSession.Entity as Entity;
+
+        if (player == null) return;
+
+        // Get current avatar's position
+        Vector3 playerPosition = player.transform.position;
     }
 
 }
