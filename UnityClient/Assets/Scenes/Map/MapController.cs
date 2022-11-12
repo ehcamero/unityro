@@ -165,6 +165,7 @@ public class MapController : MonoBehaviour {
             }
 
             entity.transform.position = new Vector3(pkt.PosX, PathFinding.GetCellHeight(pkt.PosX, pkt.PosY), pkt.PosY);
+            Session.CurrentSession.SetCurrentMapPosition(pkt.PosX, pkt.PosY);
             new CZ.NOTIFY_ACTORINIT().Send();
             await GameManager.UnloadScene("LoadingScene");
         }
