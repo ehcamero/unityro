@@ -4,7 +4,6 @@ public class Session {
 
     public static Session CurrentSession { get; private set; }
     public static Action<string> OnMapChanged;
-    public static Action<short, short> OnPositionChanged;
 
     public int AccountID;
     public INetworkEntity Entity { get; private set; }
@@ -24,13 +23,6 @@ public class Session {
     public void SetCurrentMap(string mapname) {
         CurrentMap = mapname;
         OnMapChanged?.Invoke(mapname);
-    }
-
-    public void SetCurrentMapPosition(short xPos, short yPos)
-    {
-        CurrentXPosition = xPos;
-        CurrentYPosition = yPos;
-        OnPositionChanged?.Invoke(xPos, yPos);
     }
 
     public static void StartSession(Session session) {
