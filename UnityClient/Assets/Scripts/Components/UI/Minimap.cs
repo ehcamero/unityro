@@ -1,5 +1,6 @@
 using ROIO;
 using System;
+using System.Drawing;
 using System.IO;
 using TMPro;
 using UnityEngine;
@@ -25,7 +26,7 @@ public class Minimap : MonoBehaviour
 
     #region SerializedFields
     [SerializeField]
-    private int currentZoom = 0;
+    private int currentZoomTest = 0;
     [SerializeField]
     private float offSetX = 0f;
     [SerializeField]
@@ -34,11 +35,32 @@ public class Minimap : MonoBehaviour
     private float centerPointX = 0;
     [SerializeField]
     private float centerPointY = 0;
+    [SerializeField]
+    private float widthTest = 128;
+    [SerializeField]
+    private float heightTest = 128;
     #endregion
 
     #region Singletons
     Entity player;
     #endregion
+
+    #region Constants
+    private const int DEFAULT_ZOOM_INDEX = 0;
+    #endregion
+
+    private Vector2 mapAndMiniMapScaleFactors;
+    private Rect miniMapOriginalRect;
+    private int currentZoom;
+    private float[] zoomValues =
+    {
+        1.25f,
+        1.45f,
+        1.75f,
+        2.0f,
+        2.3f
+    };
+
 
     private string currentMap;
     private float miniMapWidth = 0f;
@@ -47,14 +69,7 @@ public class Minimap : MonoBehaviour
     private float maskMiniMapHeight = 0f;
     private uint realMapWidth = 0;
     private uint realMapHeight = 0;
-    private float[] zoomValues =
-    {
-        0.25f,
-        0.32f,
-        0.425f,
-        0.75f,
-        1.0f
-    };
+    
 
     void Awake()
     {
@@ -87,12 +102,10 @@ public class Minimap : MonoBehaviour
         buttonMinus = miniMapBase.Find("ButtonMinus").GetComponent<Button>();
         buttonPlus = miniMapBase.Find("ButtonPlus").GetComponent<Button>();
 
-        /*
         buttonMinus.onClick.RemoveAllListeners();
         buttonMinus.onClick.AddListener(OnClickButtonMinus);
         buttonPlus.onClick.RemoveAllListeners();
         buttonPlus.onClick.AddListener(OnClickButtonPlus);
-        */
 
         // Get player indicator on minimap texture
         playerIndicatorTexture = await Addressables.LoadAssetAsync<Texture2D>($"{DBManager.INTERFACE_PATH}map/map_arrow.png").Task;
@@ -102,9 +115,21 @@ public class Minimap : MonoBehaviour
         mapThumbTexture = await Addressables.LoadAssetAsync<Texture2D>($"{DBManager.INTERFACE_PATH}map/{Session.CurrentSession.CurrentMap}.png").Task;
         mapThumb.texture = mapThumbTexture;
         SetMapName(Session.CurrentSession.CurrentMap);
+        miniMapOriginalRect = mapThumb.rectTransform.rect;
+        GetMapAndMiniMapScale();
 
         // Get entity player
         player = Session.CurrentSession.Entity as Entity;
+    }
+
+    #region Events implementation
+    private void OnClickButtonMinus()
+    {
+        MiniMapZoom(false);
+    }
+    private void OnClickButtonPlus()
+    {
+        MiniMapZoom(true);
     }
 
     private async void OnMapChanged(string mapName)
@@ -152,6 +177,55 @@ public class Minimap : MonoBehaviour
         var size = CalculateNewSize(mapThumbTexture.width, mapThumbTexture.height, 128, 128);
         (transform as RectTransform).sizeDelta = size;
         */
+    }
+    #endregion
+
+    private void MiniMapZoom(bool isPlus)
+    {
+        if (isPlus)
+        {
+            ZoomOut();
+        }
+        else
+        {
+            ZoomIn();
+        }
+    }
+
+    private void ZoomOut()
+    {
+        if (currentZoom >= zoomValues.Length)
+        {
+            currentZoom = zoomValues.Length - 1;
+            return;
+        } else
+        {
+            mapThumb.rectTransform.sizeDelta = new Vector2(miniMapOriginalRect.width * zoomValues[currentZoom], miniMapOriginalRect.height * zoomValues[currentZoom]);
+            currentZoom++;
+        }
+    }
+
+    private void ZoomIn()
+    {
+        currentZoom--;
+        if(currentZoom < DEFAULT_ZOOM_INDEX)
+        {
+            currentZoom = DEFAULT_ZOOM_INDEX;
+            mapThumb.rectTransform.sizeDelta = new Vector2(miniMapOriginalRect.width, miniMapOriginalRect.height);
+            return;
+        } else
+        {
+            mapThumb.rectTransform.sizeDelta = new Vector2(miniMapOriginalRect.width * zoomValues[currentZoom], miniMapOriginalRect.height * zoomValues[currentZoom]);
+        }
+    }
+
+    private void GetMapAndMiniMapScale()
+    {
+        mapAndMiniMapScaleFactors.x = mapThumb.rectTransform.rect.x < MapRenderer.width ?
+            mapThumb.rectTransform.rect.x / MapRenderer.width : MapRenderer.width / mapThumb.rectTransform.rect.x;
+
+        mapAndMiniMapScaleFactors.y = mapThumb.rectTransform.rect.y < MapRenderer.height ?
+            mapThumb.rectTransform.rect.y / MapRenderer.height : MapRenderer.height / mapThumb.rectTransform.rect.y;
     }
 
     private void Update()
