@@ -51,6 +51,11 @@ public class Minimap : MonoBehaviour
 
     private Vector2 mapAndMiniMapScaleFactors;
     private Rect miniMapOriginalRect;
+    private Vector2 currentPlayerCoordinates;
+    private Vector2 lastPlayerCoordinates;
+    private Vector2 playerDelta;
+    private Vector2 centerPoint;
+    private bool isZoomApplied = false;
     private int currentZoom;
     private float[] zoomValues =
     {
@@ -78,10 +83,8 @@ public class Minimap : MonoBehaviour
 
     private void LateUpdate()
     {
-        /*
         if(Session.CurrentSession == null) return;
-        UpdatePlayerArrow();
-        */
+        TranslatePlayerArrow();
     }
 
     private void OnDestroy()
@@ -116,7 +119,7 @@ public class Minimap : MonoBehaviour
         mapThumb.texture = mapThumbTexture;
         SetMapName(Session.CurrentSession.CurrentMap);
         miniMapOriginalRect = mapThumb.rectTransform.rect;
-        GetMapAndMiniMapScale();
+        //GetMapAndMiniMapScaleFactors();
 
         // Get entity player
         player = Session.CurrentSession.Entity as Entity;
@@ -144,6 +147,7 @@ public class Minimap : MonoBehaviour
         }
         mapThumb.texture = mapThumbTexture;
         SetMapName(currentMap);
+        GetCurrentPlayerCoordinates();
 
         /*
         // Get player avatar
@@ -180,6 +184,12 @@ public class Minimap : MonoBehaviour
     }
     #endregion
 
+    private void GetCurrentPlayerCoordinates()
+    {
+        currentPlayerCoordinates.x = (int) Math.Truncate(player.transform.position.x);
+        currentPlayerCoordinates.y = (int) Math.Truncate(player.transform.position.z);
+    }
+
     private void MiniMapZoom(bool isPlus)
     {
         if (isPlus)
@@ -208,7 +218,7 @@ public class Minimap : MonoBehaviour
     private void ZoomIn()
     {
         currentZoom--;
-        if(currentZoom < DEFAULT_ZOOM_INDEX)
+        if(currentZoom <= DEFAULT_ZOOM_INDEX)
         {
             currentZoom = DEFAULT_ZOOM_INDEX;
             mapThumb.rectTransform.sizeDelta = new Vector2(miniMapOriginalRect.width, miniMapOriginalRect.height);
@@ -219,13 +229,87 @@ public class Minimap : MonoBehaviour
         }
     }
 
-    private void GetMapAndMiniMapScale()
+    private void GetMapAndMiniMapScaleFactors()
     {
         mapAndMiniMapScaleFactors.x = mapThumb.rectTransform.rect.x < MapRenderer.width ?
             mapThumb.rectTransform.rect.x / MapRenderer.width : MapRenderer.width / mapThumb.rectTransform.rect.x;
 
         mapAndMiniMapScaleFactors.y = mapThumb.rectTransform.rect.y < MapRenderer.height ?
             mapThumb.rectTransform.rect.y / MapRenderer.height : MapRenderer.height / mapThumb.rectTransform.rect.y;
+    }
+
+    private Vector2 GetPlayerDelta()
+    {
+        Vector2 auxVector = Vector2.zero;
+
+        auxVector.x = currentPlayerCoordinates.x - lastPlayerCoordinates.x;
+        auxVector.y = currentPlayerCoordinates.y - lastPlayerCoordinates.y;
+
+        Debug.Log($"Delta X: {auxVector.x} Delta Y: {auxVector.y}");
+
+        return auxVector;
+    }
+
+    private float CalculateNewXValue(Vector2 playerDelta)
+    {
+        return mapThumb.transform.localPosition.x + (mapAndMiniMapScaleFactors.x * playerDelta.x);
+    }
+
+    private float CalculateNewYValue(Vector2 playerDelta) {
+        return mapThumb.transform.localPosition.y + (mapAndMiniMapScaleFactors.y * playerDelta.y);
+    }
+
+    private void TranslateMiniMap()
+    {
+        if (lastPlayerCoordinates == currentPlayerCoordinates) return;
+
+        playerDelta = GetPlayerDelta();
+
+        if (isZoomApplied)
+        {
+            mapThumb.transform.localPosition = new Vector3(CalculateNewXValue(playerDelta), CalculateNewYValue(playerDelta), 0);
+        }
+        
+        lastPlayerCoordinates = currentPlayerCoordinates;
+    }
+
+    private void TranslatePlayerArrow()
+    {
+        switch (player.Direction) {
+            case Direction.North:
+                playerArrow.transform.eulerAngles = new Vector3(0, 0, 0);
+                return;
+            case Direction.NorthEast:
+                playerArrow.transform.eulerAngles = new Vector3(0, 0, 315);
+                return;
+            case Direction.East:
+                playerArrow.transform.eulerAngles = new Vector3(0, 0, 270);
+                return;
+            case Direction.SouthEast:
+                playerArrow.transform.eulerAngles = new Vector3(0, 0, 225);
+                return;
+            case Direction.South:
+                playerArrow.transform.eulerAngles = new Vector3(0, 0, 180);
+                return;
+            case Direction.SouthWest:
+                playerArrow.transform.eulerAngles = new Vector3(0, 0, 135);
+                return;
+            case Direction.West:
+                playerArrow.transform.eulerAngles = new Vector3(0, 0, 90);
+                return;
+            case Direction.NorthWest:
+                playerArrow.transform.eulerAngles = new Vector3(0, 0, 45);
+                return;
+            default:
+                playerArrow.transform.eulerAngles = new Vector3(0, 0, 0);
+                return;
+        }
+    }
+
+    private void GetCenterPoint()
+    {
+        centerPoint.x = mapThumb.rectTransform.rect.width / 2;
+        centerPoint.y = mapThumb.rectTransform.rect.height / 2;
     }
 
     private void Update()
@@ -235,7 +319,16 @@ public class Minimap : MonoBehaviour
             OnMapChanged(currentMap);
         }
 
+        if(MapRenderer.width != 0)
+        {
+            GetMapAndMiniMapScaleFactors();
+        }
+
+        GetCurrentPlayerCoordinates();
+        GetCenterPoint();
         UpdateCoordinates();
+        TranslateMiniMap();
+
     }
 
     /*
