@@ -9,6 +9,14 @@ using UnityEngine.UI;
 
 public class Minimap : MonoBehaviour 
 {
+    #region Enums
+    private enum MiniMapComponents
+    {
+        MINIMAP,
+        PLAYER_ARROW
+    }
+    #endregion
+
     #region Textures fields
     private Texture2D mapThumbTexture;
     private Texture2D playerIndicatorTexture;
@@ -52,10 +60,14 @@ public class Minimap : MonoBehaviour
     private Vector2 mapAndMiniMapScaleFactors;
     private Rect miniMapOriginalRect;
     private Vector2 currentPlayerCoordinates;
+    private Vector2 currentPlayerArrowCoordinates;
     private Vector2 lastPlayerCoordinates;
+    private Vector2 lastPlayerArrowCoordinates;
     private Vector2 playerDelta;
+    private Vector2 playerArrowDelta;
     private Vector2 centerPoint;
     private bool isZoomApplied = false;
+    private bool isFirstPlayerArrowCoordinates = true;
     private int currentZoom;
     private float[] zoomValues =
     {
@@ -119,7 +131,6 @@ public class Minimap : MonoBehaviour
         mapThumb.texture = mapThumbTexture;
         SetMapName(Session.CurrentSession.CurrentMap);
         miniMapOriginalRect = mapThumb.rectTransform.rect;
-        //GetMapAndMiniMapScaleFactors();
 
         // Get entity player
         player = Session.CurrentSession.Entity as Entity;
@@ -148,46 +159,13 @@ public class Minimap : MonoBehaviour
         mapThumb.texture = mapThumbTexture;
         SetMapName(currentMap);
         GetCurrentPlayerCoordinates();
-
-        /*
-        // Get player avatar
-        Entity player = Session.CurrentSession.Entity as Entity;
-
-        if(player == null)
-        {
-            Debug.LogError("Player entity is null");
-            return;
-        }
-
-        
-
-        // Reset zoom
-        currentZoom = 0;
-
-        miniMapWidth = mapThumb.rectTransform.rect.width;
-        miniMapHeight = mapThumb.rectTransform.rect.height;
-
-        maskMiniMapWidth = maskMiniMap.rectTransform.sizeDelta.x;
-        maskMiniMapHeight = maskMiniMap.rectTransform.sizeDelta.y;
-
-        realMapWidth = MapRenderer.width;
-        realMapHeight = MapRenderer.height;
-
-        SetMapName(currentMap);
-        SetCoordinateMiniMap((short) player.transform.position.x, (short) player.transform.position.y);
-        UpdateMiniMapOffset(true);
-
-        /*
-        var size = CalculateNewSize(mapThumbTexture.width, mapThumbTexture.height, 128, 128);
-        (transform as RectTransform).sizeDelta = size;
-        */
     }
     #endregion
 
     private void GetCurrentPlayerCoordinates()
     {
-        currentPlayerCoordinates.x = (int) Math.Truncate(player.transform.position.x);
-        currentPlayerCoordinates.y = (int) Math.Truncate(player.transform.position.z);
+        currentPlayerArrowCoordinates.x = currentPlayerCoordinates.x = (int) Math.Truncate(player.transform.position.x);
+        currentPlayerArrowCoordinates.y = currentPlayerCoordinates.y = (int) Math.Truncate(player.transform.position.z);
     }
 
     private void MiniMapZoom(bool isPlus)
@@ -207,12 +185,14 @@ public class Minimap : MonoBehaviour
         if (currentZoom >= zoomValues.Length)
         {
             currentZoom = zoomValues.Length - 1;
-            return;
         } else
         {
             mapThumb.rectTransform.sizeDelta = new Vector2(miniMapOriginalRect.width * zoomValues[currentZoom], miniMapOriginalRect.height * zoomValues[currentZoom]);
             currentZoom++;
         }
+
+        if (currentZoom > DEFAULT_ZOOM_INDEX)
+            isZoomApplied = true;
     }
 
     private void ZoomIn()
@@ -222,11 +202,13 @@ public class Minimap : MonoBehaviour
         {
             currentZoom = DEFAULT_ZOOM_INDEX;
             mapThumb.rectTransform.sizeDelta = new Vector2(miniMapOriginalRect.width, miniMapOriginalRect.height);
-            return;
         } else
         {
             mapThumb.rectTransform.sizeDelta = new Vector2(miniMapOriginalRect.width * zoomValues[currentZoom], miniMapOriginalRect.height * zoomValues[currentZoom]);
         }
+
+        if (currentZoom == DEFAULT_ZOOM_INDEX)
+            isZoomApplied = false;
     }
 
     private void GetMapAndMiniMapScaleFactors()
@@ -245,18 +227,46 @@ public class Minimap : MonoBehaviour
         auxVector.x = currentPlayerCoordinates.x - lastPlayerCoordinates.x;
         auxVector.y = currentPlayerCoordinates.y - lastPlayerCoordinates.y;
 
-        Debug.Log($"Delta X: {auxVector.x} Delta Y: {auxVector.y}");
+        Debug.Log($"Delta player X: {auxVector.x} Delta Y player: {auxVector.y}");
 
         return auxVector;
     }
 
-    private float CalculateNewXValue(Vector2 playerDelta)
+    private Vector2 GetPlayerArrowDelta()
     {
-        return mapThumb.transform.localPosition.x + (mapAndMiniMapScaleFactors.x * playerDelta.x);
+        Vector2 auxVector = Vector2.zero;
+
+        auxVector.x = currentPlayerArrowCoordinates.x - lastPlayerArrowCoordinates.x;
+        auxVector.y = currentPlayerArrowCoordinates.y - lastPlayerArrowCoordinates.y;
+
+        Debug.Log($"Delta player arrow X: {auxVector.x} Delta player arrow Y: {auxVector.y}");
+
+        return auxVector;
     }
 
-    private float CalculateNewYValue(Vector2 playerDelta) {
-        return mapThumb.transform.localPosition.y + (mapAndMiniMapScaleFactors.y * playerDelta.y);
+    private float CalculateNewXValue(Vector2 delta, MiniMapComponents miniMapComponent)
+    {
+        switch(miniMapComponent)
+        {
+            case MiniMapComponents.MINIMAP:
+                return mapThumb.transform.localPosition.x + (Math.Abs(mapAndMiniMapScaleFactors.x) * delta.x);
+            case MiniMapComponents.PLAYER_ARROW:
+                return playerArrow.transform.localPosition.x + ((Math.Abs(mapAndMiniMapScaleFactors.x) * delta.x) - centerPoint.x);
+            default:
+                return mapThumb.transform.localPosition.x;
+        }
+    }
+
+    private float CalculateNewYValue(Vector2 delta, MiniMapComponents miniMapComponent)
+    {
+        switch (miniMapComponent) {
+            case MiniMapComponents.MINIMAP:
+                return mapThumb.transform.localPosition.y + (Math.Abs(mapAndMiniMapScaleFactors.y) * delta.y);
+            case MiniMapComponents.PLAYER_ARROW:
+                return playerArrow.transform.localPosition.y + ((Math.Abs(mapAndMiniMapScaleFactors.y) * delta.y) - centerPoint.y);
+            default:
+                return mapThumb.transform.localPosition.y;
+        }
     }
 
     private void TranslateMiniMap()
@@ -267,7 +277,7 @@ public class Minimap : MonoBehaviour
 
         if (isZoomApplied)
         {
-            mapThumb.transform.localPosition = new Vector3(CalculateNewXValue(playerDelta), CalculateNewYValue(playerDelta), 0);
+            mapThumb.transform.localPosition = new Vector3(CalculateNewXValue(playerDelta, MiniMapComponents.MINIMAP), CalculateNewYValue(playerDelta, MiniMapComponents.MINIMAP), 0);
         }
         
         lastPlayerCoordinates = currentPlayerCoordinates;
@@ -275,7 +285,24 @@ public class Minimap : MonoBehaviour
 
     private void TranslatePlayerArrow()
     {
-        switch (player.Direction) {
+        UpadatePlayerArrowDirection(player.Direction);
+
+        if (lastPlayerArrowCoordinates == currentPlayerArrowCoordinates) return;
+
+        playerArrowDelta = GetPlayerArrowDelta();
+
+        if (isFirstPlayerArrowCoordinates)
+        {
+            playerArrow.transform.localPosition = new Vector3(CalculateNewXValue(playerArrowDelta, MiniMapComponents.PLAYER_ARROW), CalculateNewYValue(playerArrowDelta, MiniMapComponents.PLAYER_ARROW), 0);
+            isFirstPlayerArrowCoordinates = false;
+        }
+
+        lastPlayerArrowCoordinates = currentPlayerArrowCoordinates;
+    }
+
+    private void UpadatePlayerArrowDirection(Direction playerDirection)
+    {
+        switch (playerDirection) {
             case Direction.North:
                 playerArrow.transform.eulerAngles = new Vector3(0, 0, 0);
                 return;
@@ -328,15 +355,7 @@ public class Minimap : MonoBehaviour
         GetCenterPoint();
         UpdateCoordinates();
         TranslateMiniMap();
-
     }
-
-    /*
-    private Vector2 CalculateNewSize(int srcWidth, int srcHeight, int maxWidth, int maxHeight) {
-        var ratio = Mathf.Min((float) maxWidth / (float) srcWidth, (float) maxHeight / (float) srcHeight);
-        return new Vector2(srcWidth * ratio, srcHeight * ratio);
-    }
-    */
 
     private void SetMapName(string currentMapName)
     {
