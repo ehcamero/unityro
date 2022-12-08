@@ -251,7 +251,7 @@ public class Minimap : MonoBehaviour
             case MiniMapComponents.MINIMAP:
                 return mapThumb.transform.localPosition.x + (Math.Abs(mapAndMiniMapScaleFactors.x) * delta.x);
             case MiniMapComponents.PLAYER_ARROW:
-                return playerArrow.transform.localPosition.x + ((Math.Abs(mapAndMiniMapScaleFactors.x) * delta.x) - centerPoint.x);
+                return playerArrow.transform.localPosition.x + (Math.Abs(mapAndMiniMapScaleFactors.x) * delta.x);
             default:
                 return mapThumb.transform.localPosition.x;
         }
@@ -263,7 +263,7 @@ public class Minimap : MonoBehaviour
             case MiniMapComponents.MINIMAP:
                 return mapThumb.transform.localPosition.y + (Math.Abs(mapAndMiniMapScaleFactors.y) * delta.y);
             case MiniMapComponents.PLAYER_ARROW:
-                return playerArrow.transform.localPosition.y + ((Math.Abs(mapAndMiniMapScaleFactors.y) * delta.y) - centerPoint.y);
+                return playerArrow.transform.localPosition.y + (Math.Abs(mapAndMiniMapScaleFactors.y) * delta.y);
             default:
                 return mapThumb.transform.localPosition.y;
         }
@@ -291,10 +291,17 @@ public class Minimap : MonoBehaviour
 
         playerArrowDelta = GetPlayerArrowDelta();
 
+        if (!isFirstPlayerArrowCoordinates) {
+            playerArrow.transform.localPosition = new Vector3(CalculateNewXValue(playerArrowDelta, MiniMapComponents.PLAYER_ARROW), CalculateNewYValue(playerArrowDelta, MiniMapComponents.PLAYER_ARROW), 0);
+            Debug.Log($"Current player arrow pos X: {playerArrow.transform.localPosition.x} Current player arrow pos Y: {playerArrow.transform.localPosition.y}");
+        }
+
         if (isFirstPlayerArrowCoordinates)
         {
+            playerArrow.transform.localPosition = new Vector3(-centerPoint.x, -centerPoint.y, 0);
             playerArrow.transform.localPosition = new Vector3(CalculateNewXValue(playerArrowDelta, MiniMapComponents.PLAYER_ARROW), CalculateNewYValue(playerArrowDelta, MiniMapComponents.PLAYER_ARROW), 0);
             isFirstPlayerArrowCoordinates = false;
+            Debug.Log($"Initial player arrow pos X: {playerArrow.transform.localPosition.x} Initial player arrow pos Y: {playerArrow.transform.localPosition.y}");
         }
 
         lastPlayerArrowCoordinates = currentPlayerArrowCoordinates;
